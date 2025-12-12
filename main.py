@@ -23,7 +23,8 @@ import utils
 LOGGER = logging.getLogger(__name__)
 
 _DATASETS = {
-    "mvtec": ["datasets.mvtec", "MVTecDataset"],
+    # "mvtec": ["datasets.mvtec", "MVTecDataset"],
+    "StitchingNet":["datasets.StitchingNet", "StitchingNetDataset"]
 }
 
 

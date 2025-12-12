@@ -1,0 +1,1 @@
+nohup bash run-res18.sh > out-res18-only-h-gan64.log 2>&1 &

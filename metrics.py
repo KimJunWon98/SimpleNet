@@ -88,6 +88,12 @@ from skimage import measure
 def compute_pro(masks, amaps, num_th=200):
 
     df = pd.DataFrame([], columns=["pro", "fpr", "threshold"])
+    # df.loc[len(df)] = {
+    #     "pro": np.mean(pros),
+    #     "fpr": fpr,            
+    #     "threshold": th,
+    # }
+
     binary_amaps = np.zeros_like(amaps, dtype=np.bool)
 
     min_th = amaps.min()

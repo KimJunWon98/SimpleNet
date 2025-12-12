@@ -12,15 +12,15 @@ python3 main.py \
 --results_path results \
 --run_name run \
 net \
--b resnet18 \
+-b wideresnet50 \
 -le layer2 \
 -le layer3 \
 --pretrain_embed_dimension 1536 \
 --target_embed_dimension 1536 \
 --patchsize 3 \
---meta_epochs 40 \
+--meta_epochs 4000 \
 --embedding_size 256 \
---gan_epochs 4 \
+--gan_epochs 2 \
 --noise_std 0.015 \
 --dsc_hidden 1024 \
 --dsc_layers 2 \

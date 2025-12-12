@@ -342,28 +342,48 @@ class SimpleNet(torch.nn.Module):
         return auroc, full_pixel_auroc
     
     def _evaluate(self, test_data, scores, segmentations, features, labels_gt, masks_gt):
-        """
-        StitchingNet용 평가 함수.
-        - 이미지 레벨 AUROC만 사용
-        - 픽셀/PRO metric은 mask가 없으므로 계산하지 않고 dummy 값 반환
-        """
-
-        # 1) score 정규화 (원래 코드 유지)
+        
         scores = np.squeeze(np.array(scores))
         img_min_scores = scores.min(axis=-1)
         img_max_scores = scores.max(axis=-1)
-        scores = (scores - img_min_scores) / (img_max_scores - img_min_scores + 1e-12)
+        scores = (scores - img_min_scores) / (img_max_scores - img_min_scores)
+        # scores = np.mean(scores, axis=0)
 
-        # 2) 이미지 레벨 metric
-        image_metrics = metrics.compute_imagewise_retrieval_metrics(scores, labels_gt)
-        auroc = image_metrics["auroc"]
+        auroc = metrics.compute_imagewise_retrieval_metrics(
+            scores, labels_gt 
+        )["auroc"]
 
-        # 3) 픽셀 레벨 metric은 사용하지 않음 (dummy 값)
-        full_pixel_auroc = 0.0
-        pro = 0.0
+        if len(masks_gt) > 0:
+            segmentations = np.array(segmentations)
+            min_scores = (
+                segmentations.reshape(len(segmentations), -1)
+                .min(axis=-1)
+                .reshape(-1, 1, 1, 1)
+            )
+            max_scores = (
+                segmentations.reshape(len(segmentations), -1)
+                .max(axis=-1)
+                .reshape(-1, 1, 1, 1)
+            )
+            norm_segmentations = np.zeros_like(segmentations)
+            for min_score, max_score in zip(min_scores, max_scores):
+                norm_segmentations += (segmentations - min_score) / max(max_score - min_score, 1e-2)
+            norm_segmentations = norm_segmentations / len(scores)
+
+
+            # Compute PRO score & PW Auroc for all images
+            pixel_scores = metrics.compute_pixelwise_retrieval_metrics(
+                norm_segmentations, masks_gt)
+                # segmentations, masks_gt
+            full_pixel_auroc = pixel_scores["auroc"]
+
+            pro = metrics.compute_pro(np.squeeze(np.array(masks_gt)), 
+                                            norm_segmentations)
+        else:
+            full_pixel_auroc = -1 
+            pro = -1
 
         return auroc, full_pixel_auroc, pro
-
         
     
     def train(self, training_data, test_data):

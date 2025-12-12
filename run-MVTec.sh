@@ -1,18 +1,16 @@
-datapath=/workspace/AnomalyDetection/paper-revision/dataset/StitchingNet-SimpleNet-Dataset
-datasets=('only-a' 'only-b' 'only-c' 'only-d' 'only-e' 'only-f' 'only-g' 'only-h' 'only-i' 'only-j' 'only-k' )
-datasets=('only-h')
-
+datapath=/data4/MVTec_ad
+datasets=('screw' 'pill' 'capsule' 'carpet' 'grid' 'tile' 'wood' 'zipper' 'cable' 'toothbrush' 'transistor' 'metal_nut' 'bottle' 'hazelnut' 'leather')
 dataset_flags=($(for dataset in "${datasets[@]}"; do echo '-d '"${dataset}"; done))
 
 python3 main.py \
 --gpu 0 \
 --seed 0 \
---log_group simplenet_StitchingNet \
---log_project StitchingNet_Results \
+--log_group simplenet_mvtec \
+--log_project MVTecAD_Results \
 --results_path results \
 --run_name run \
 net \
--b resnet18 \
+-b wideresnet50 \
 -le layer2 \
 -le layer3 \
 --pretrain_embed_dimension 1536 \
@@ -28,5 +26,5 @@ net \
 --pre_proj 1 \
 dataset \
 --batch_size 8 \
---resize 224 \
---imagesize 224 "${dataset_flags[@]}" StitchingNet  $datapath
+--resize 329 \
+--imagesize 288 "${dataset_flags[@]}" mvtec $datapath

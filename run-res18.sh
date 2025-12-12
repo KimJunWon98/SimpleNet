@@ -20,13 +20,13 @@ net \
 --patchsize 3 \
 --meta_epochs 50000 \
 --embedding_size 256 \
---gan_epochs 64 \
+--gan_epochs 2 \
 --noise_std 0.015 \
 --dsc_hidden 1024 \
 --dsc_layers 2 \
 --dsc_margin .5 \
 --pre_proj 1 \
 dataset \
---batch_size 8 \
+--batch_size 4 \
 --resize 224 \
 --imagesize 224 "${dataset_flags[@]}" StitchingNet  $datapath

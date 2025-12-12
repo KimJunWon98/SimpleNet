@@ -1,4 +1,4 @@
-datapath=/workspace/AnomalyDetection/paper-revision/dataset/StitchingNet-SimpleNet-Dataset
+datapath=/home/kjw/git-repo/SimpleNet/data/SimpleNet-Dataset-100
 datasets=('only-a' 'only-b' 'only-c' 'only-d' 'only-e' 'only-f' 'only-g' 'only-h' 'only-i' 'only-j' 'only-k' )
 datasets=('only-h')
 
@@ -27,6 +27,6 @@ net \
 --dsc_margin .5 \
 --pre_proj 1 \
 dataset \
---batch_size 8 \
+--batch_size 4 \
 --resize 224 \
 --imagesize 224 "${dataset_flags[@]}" StitchingNet  $datapath

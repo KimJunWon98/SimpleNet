@@ -1,2 +1,0 @@
-nohup bash run-res18.sh > out-res18-only-h-gan2.log 2>&1 &
-nohup bash run-wrn50.sh > out-wrn50-only-h-gan2.log 2>&1 &

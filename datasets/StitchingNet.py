@@ -6,21 +6,23 @@ import torch
 from torchvision import transforms
 
 _CLASSNAMES = [
-    'only-a', 
-    'only-b', 
-    'only-c',
-    'only-d', 
-    'only-e', 
-    'only-f', 
-    'only-g', 
-    'only-h', 
-    'only-i', 
-    'only-j', 
-    'only-k',
+    "only-a",
+    "only-b",
+    "only-c",
+    "only-d",
+    "only-e",
+    "only-f",
+    "only-g",
+    "only-h",
+    "only-i",
+    "only-j",
+    "only-k",
 ]
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
+
+_IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp")
 
 
 class DatasetSplit(Enum):
@@ -29,9 +31,13 @@ class DatasetSplit(Enum):
     TEST = "test"
 
 
+def _is_image_file(fname: str) -> bool:
+    return fname.lower().endswith(_IMAGE_EXTS)
+
+
 class StitchingNetDataset(torch.utils.data.Dataset):
     """
-    PyTorch Dataset for MVTec.
+    PyTorch Dataset for StitchingNet (MVTec-like folder structure).
     """
 
     def __init__(
@@ -53,21 +59,6 @@ class StitchingNetDataset(torch.utils.data.Dataset):
         scale=0,
         **kwargs,
     ):
-        """
-        Args:
-            source: [str]. Path to the MVTec data folder.
-            classname: [str or None]. Name of MVTec class that should be
-                       provided in this dataset. If None, the datasets
-                       iterates over all available images.
-            resize: [int]. (Square) Size the loaded image initially gets
-                    resized to.
-            imagesize: [int]. (Square) Size the resized loaded image gets
-                       (center-)cropped to.
-            split: [enum-option]. Indicates if training or test split of the
-                   data should be used. Has to be an option taken from
-                   DatasetSplit, e.g. mvtec.DatasetSplit.TRAIN. Note that
-                   mvtec.DatasetSplit.TEST will also load mask data.
-        """
         super().__init__()
         self.source = source
         self.split = split
@@ -75,19 +66,21 @@ class StitchingNetDataset(torch.utils.data.Dataset):
         self.train_val_split = train_val_split
         self.transform_std = IMAGENET_STD
         self.transform_mean = IMAGENET_MEAN
+
         self.imgpaths_per_class, self.data_to_iterate = self.get_image_data()
 
         self.transform_img = [
             transforms.Resize(resize),
-            # transforms.RandomRotation(rotate_degrees, transforms.InterpolationMode.BILINEAR),
             transforms.ColorJitter(brightness_factor, contrast_factor, saturation_factor),
             transforms.RandomHorizontalFlip(h_flip_p),
             transforms.RandomVerticalFlip(v_flip_p),
             transforms.RandomGrayscale(gray_p),
-            transforms.RandomAffine(rotate_degrees, 
-                                    translate=(translate, translate),
-                                    scale=(1.0-scale, 1.0+scale),
-                                    interpolation=transforms.InterpolationMode.BILINEAR),
+            transforms.RandomAffine(
+                rotate_degrees,
+                translate=(translate, translate),
+                scale=(1.0 - scale, 1.0 + scale),
+                interpolation=transforms.InterpolationMode.BILINEAR,
+            ),
             transforms.CenterCrop(imagesize),
             transforms.ToTensor(),
             transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
@@ -105,10 +98,12 @@ class StitchingNetDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         classname, anomaly, image_path, mask_path = self.data_to_iterate[idx]
+
         image = PIL.Image.open(image_path).convert("RGB")
         image = self.transform_img(image)
 
-        if self.split == DatasetSplit.TEST and mask_path is not None:
+        # mask가 없으면 올블랙(0) 마스크 반환
+        if self.split == DatasetSplit.TEST and (mask_path is not None):
             mask = PIL.Image.open(mask_path)
             mask = self.transform_mask(mask)
         else:
@@ -133,59 +128,64 @@ class StitchingNetDataset(torch.utils.data.Dataset):
 
         for classname in self.classnames_to_use:
             classpath = os.path.join(self.source, classname, self.split.value)
-            maskpath = os.path.join(self.source, classname, "ground_truth")
-            anomaly_types = os.listdir(classpath)
+            maskroot = os.path.join(self.source, classname, "ground_truth")
+
+            if not os.path.isdir(classpath):
+                raise FileNotFoundError(f"Split path not found: {classpath}")
+
+            anomaly_types = [d for d in os.listdir(classpath) if os.path.isdir(os.path.join(classpath, d))]
 
             imgpaths_per_class[classname] = {}
             maskpaths_per_class[classname] = {}
 
             for anomaly in anomaly_types:
                 anomaly_path = os.path.join(classpath, anomaly)
-                anomaly_files = sorted(os.listdir(anomaly_path))
-                imgpaths_per_class[classname][anomaly] = [
-                    os.path.join(anomaly_path, x) for x in anomaly_files
-                ]
 
+                # ✅ 이미지 파일만 필터링 (숨김파일/텍스트 등 제외)
+                anomaly_files = sorted([f for f in os.listdir(anomaly_path) if _is_image_file(f)])
+                img_list = [os.path.join(anomaly_path, x) for x in anomaly_files]
+                imgpaths_per_class[classname][anomaly] = img_list
+
+                # train/val split 처리
                 if self.train_val_split < 1.0:
-                    n_images = len(imgpaths_per_class[classname][anomaly])
-                    train_val_split_idx = int(n_images * self.train_val_split)
+                    n_images = len(img_list)
+                    split_idx = int(n_images * self.train_val_split)
                     if self.split == DatasetSplit.TRAIN:
-                        imgpaths_per_class[classname][anomaly] = imgpaths_per_class[
-                            classname
-                        ][anomaly][:train_val_split_idx]
+                        imgpaths_per_class[classname][anomaly] = img_list[:split_idx]
                     elif self.split == DatasetSplit.VAL:
-                        imgpaths_per_class[classname][anomaly] = imgpaths_per_class[
-                            classname
-                        ][anomaly][train_val_split_idx:]
+                        imgpaths_per_class[classname][anomaly] = img_list[split_idx:]
 
+                # ✅ TEST + anomaly(=good이 아님)일 때만 마스크 경로 구성
                 if self.split == DatasetSplit.TEST and anomaly != "good":
-                    anomaly_mask_path = os.path.join(maskpath, anomaly)
+                    anomaly_mask_dir = os.path.join(maskroot, anomaly)
 
-                    if os.path.isdir(anomaly_mask_path):
-                        # ✅ 마스크 폴더가 있을 때: 원래 MVTec처럼 처리
-                        anomaly_mask_files = sorted(os.listdir(anomaly_mask_path))
-                        maskpaths_per_class[classname][anomaly] = [
-                            os.path.join(anomaly_mask_path, x) for x in anomaly_mask_files
-                        ]
-                    else:
-                        # ✅ 마스크 폴더가 없으면: 이미지 개수만큼 None으로 채움
-                        anomaly_mask_files = sorted(anomaly_files)  # 위에서 구했던 파일 리스트
-                        maskpaths_per_class[classname][anomaly] = [None] * len(anomaly_mask_files)
+                    mask_list = []
+                    if os.path.isdir(anomaly_mask_dir):
+                        # 마스크도 이미지 파일만 필터링
+                        mask_files = sorted([f for f in os.listdir(anomaly_mask_dir) if _is_image_file(f)])
+                        mask_list = [os.path.join(anomaly_mask_dir, x) for x in mask_files]
+
+                    # ✅ 핵심: 마스크가 없거나 / 개수가 안 맞으면 -> 이미지 개수만큼 None
+                    n_imgs = len(imgpaths_per_class[classname][anomaly])
+                    if len(mask_list) != n_imgs:
+                        mask_list = [None] * n_imgs
+
+                    maskpaths_per_class[classname][anomaly] = mask_list
 
                 else:
-                    maskpaths_per_class[classname]["good"] = None
+                    # good이나 train/val에서는 mask 사용 안 함
+                    maskpaths_per_class[classname][anomaly] = None
 
-
-        # Unrolls the data dictionary to an easy-to-iterate list.
+        # Unroll to iterate list
         data_to_iterate = []
         for classname in sorted(imgpaths_per_class.keys()):
             for anomaly in sorted(imgpaths_per_class[classname].keys()):
-                for i, image_path in enumerate(imgpaths_per_class[classname][anomaly]):
-                    data_tuple = [classname, anomaly, image_path]
+                imgs = imgpaths_per_class[classname][anomaly]
+                for i, image_path in enumerate(imgs):
                     if self.split == DatasetSplit.TEST and anomaly != "good":
-                        data_tuple.append(maskpaths_per_class[classname][anomaly][i])
+                        mask_path = maskpaths_per_class[classname][anomaly][i]  # 항상 안전
                     else:
-                        data_tuple.append(None)
-                    data_to_iterate.append(data_tuple)
+                        mask_path = None
+                    data_to_iterate.append([classname, anomaly, image_path, mask_path])
 
         return imgpaths_per_class, data_to_iterate

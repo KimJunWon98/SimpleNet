@@ -1,4 +1,4 @@
-datapath=/home/kjw/git-repo/SimpleNet/data/SimpleNet-Dataset-100
+datapath=/workspace/AnomalyDetection/paper-revision/dataset/SimpleNet-Dataset-100
 datasets=('only-a' 'only-b' 'only-c' 'only-d' 'only-e' 'only-f' 'only-g' 'only-h' 'only-i' 'only-j' 'only-k' )
 datasets=('only-h')
 

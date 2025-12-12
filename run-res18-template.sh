@@ -4,7 +4,7 @@ set -euo pipefail
 DATASET="${1:?usage: $0 <only-a|only-b|...>}"
 GPU="${2:-1}"
 
-datapath=/workspace/AnomalyDetection/paper-revision/dataset/SimpleNet-Dataset-100
+datapath=/home/kimjunwon/github-repo/SimpleNet/data/SimpleNet-Dataset-100
 
 python3 -u main.py \
   --gpu "${GPU}" \
@@ -12,7 +12,7 @@ python3 -u main.py \
   --log_group simplenet_StitchingNet \
   --log_project StitchingNet_Results \
   --results_path results \
-  --run_name "wrn50_${DATASET}_gan2" \
+  --run_name "res18_${DATASET}_gan2" \
   net \
     -b resnet18 \
     -le layer2 \

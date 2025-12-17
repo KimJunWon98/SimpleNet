@@ -230,7 +230,7 @@ def net(
 @click.option("--subdatasets", "-d", multiple=True, type=str, required=True)
 @click.option("--train_val_split", type=float, default=1, show_default=True)
 @click.option("--batch_size", default=2, type=int, show_default=True)
-@click.option("--num_workers", default=2, type=int, show_default=True)
+@click.option("--num_workers", default=4, type=int, show_default=True)
 @click.option("--resize", default=256, type=int, show_default=True)
 @click.option("--imagesize", default=224, type=int, show_default=True)
 @click.option("--rotate_degrees", default=0, type=int)

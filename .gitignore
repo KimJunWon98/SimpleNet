@@ -5,3 +5,5 @@ __pycache__/*
 /data/*
 *.txt
 *.sh
+*.csv
+extract_log.py
